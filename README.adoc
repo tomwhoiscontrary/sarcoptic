@@ -1,0 +1,26 @@
+Very, very, lightweight dynamic-class-based immutable value types for Java 8.
+
+You don't actually want this. It's more or less a fanwork based on the canon of Dominic Fox's https://github.com/poetix/vaporetto[endless] https://github.com/poetix/phantom-pojos[stream] of https://github.com/poetix/octarine[attempts] to https://github.com/poetix/mtuples[bring] https://github.com/poetix/radioactive[structs] to https://github.com/poetix/hume[Java]. It is not the https://github.com/SamirTalwar/Rekord[first].
+
+Define types as follows:
+
+    public interface Address extends Struct<Address> {
+        Collection<String> addressLines();
+        String postcode();
+    }
+
+    public interface Person extends Struct<Person> {
+        String name();
+        int age();
+        Address address();
+    }
+
+Build values like this:
+
+    Person person = Struct.of(Person.class);
+
+Read properties like this:
+
+    int age = person.age();
+
+At the moment, you can't actually create structs whose properties have non-zero values, or update structs in any way. Rest assured that this is the project's highest priority. After that we'll get on to lenses and destructors and Q-algebras and all that.
