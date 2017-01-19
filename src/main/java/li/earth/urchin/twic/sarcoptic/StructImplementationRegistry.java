@@ -45,7 +45,7 @@ class StructImplementationRegistry extends ClassLoader {
 
     private ClassWriter makeClass(String implClassName, Class<?> baseType, Class<?> ifaceType) {
         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        classWriter.visit(52,
+        classWriter.visit(Opcodes.V1_8,
                           Opcodes.ACC_SUPER | Opcodes.ACC_PUBLIC,
                           ClassFileUtils.binaryName(implClassName),
                           signature(baseType, ifaceType),
@@ -72,14 +72,25 @@ class StructImplementationRegistry extends ClassLoader {
         Kind propertyKind = Kind.of(propType);
         String propertyDescriptor = propertyKind.descriptor(propType);
 
+        makePropertyField(classWriter, propName, propertyDescriptor);
+        makePropertyAccessor(classWriter, implClassName, propName, propertyKind, propertyDescriptor);
+    }
+
+    private void makePropertyField(ClassWriter classWriter, String propName, String propertyDescriptor) {
         FieldVisitor field = classWriter.visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
                                                     propName,
                                                     propertyDescriptor,
                                                     null,
                                                     null);
         field.visitEnd();
+    }
 
-        MethodVisitor accessor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, propName, "()" + propertyDescriptor, null, null);
+    private void makePropertyAccessor(ClassWriter classWriter, String implClassName, String propName, Kind propertyKind, String propertyDescriptor) {
+        MethodVisitor accessor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
+                                                         propName,
+                                                         "()" + propertyDescriptor,
+                                                         null,
+                                                         null);
         accessor.visitCode();
         accessor.visitVarInsn(Opcodes.ALOAD, 0);
         accessor.visitFieldInsn(Opcodes.GETFIELD, ClassFileUtils.binaryName(implClassName), propName, propertyDescriptor);
