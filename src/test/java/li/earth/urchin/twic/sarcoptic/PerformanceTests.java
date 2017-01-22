@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import static li.earth.urchin.twic.jmhunit.ScaledStatistics.scale;
 import static li.earth.urchin.twic.jmhunit.StatisticsMatchers.betterThan;
+import static li.earth.urchin.twic.jmhunit.StatisticsMatchers.indistinguishableFrom;
 import static li.earth.urchin.twic.jmhunit.StatisticsMatchers.noWorseThan;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -36,12 +37,23 @@ public class PerformanceTests {
     public static JMHRule jmh = new JMHRule();
 
     @Test
-    public void gettingAFieldValueIsFast() throws Exception {
+    public void gettingAPropertyFromAStructIsAlmostAsFastAsGettingAFieldFromAnObject() throws Exception {
+        Result structResult = jmh.getAggregatedResult("getValueFromStruct");
         Result beanResult = jmh.getAggregatedResult("getValueFromBean");
+        Result interfaceResult = jmh.getAggregatedResult("getValueFromInterface");
+
+        // check that HotSpot still works
+        assertThat(interfaceResult.getStatistics(), indistinguishableFrom(beanResult.getStatistics()));
+
+        assertThat(structResult.getStatistics(), noWorseThan(scale(1.5, beanResult.getStatistics())));
+        assertThat(structResult.getStatistics(), noWorseThan(scale(1.5, interfaceResult.getStatistics())));
+    }
+
+    @Test
+    public void gettingAPropertyFromAStructIsFasterThanGettingAnEntryFromAMap() throws Exception {
         Result structResult = jmh.getAggregatedResult("getValueFromStruct");
         Result mapResult = jmh.getAggregatedResult("getValueFromMap");
 
-        assertThat(structResult.getStatistics(), noWorseThan(scale(1.5, beanResult.getStatistics())));
         assertThat(structResult.getStatistics(), betterThan(mapResult.getStatistics()));
     }
 
@@ -64,11 +76,30 @@ public class PerformanceTests {
 
         }
 
+        public static interface TestInterface {
+
+            String value();
+
+        }
+
+        public static class TestInterfaceImpl implements TestInterface {
+
+            private final String value = null;
+
+            @Override
+            public String value() {
+                return value;
+            }
+
+        }
+
         public final TestStruct struct = Struct.of(TestStruct.class);
 
         public final TestBean bean = new TestBean();
 
         public final Map<String, String> map = new HashMap<>(Collections.singletonMap("value", null));
+
+        public final TestInterface iface = new TestInterfaceImpl();
 
     }
 
@@ -85,6 +116,11 @@ public class PerformanceTests {
     @Benchmark
     public void getValueFromMap(Fixtures fixtures, Blackhole blackhole) {
         blackhole.consume(fixtures.map.get("value"));
+    }
+
+    @Benchmark
+    public void getValueFromInterface(Fixtures fixtures, Blackhole blackhole) {
+        blackhole.consume(fixtures.iface.value());
     }
 
 }

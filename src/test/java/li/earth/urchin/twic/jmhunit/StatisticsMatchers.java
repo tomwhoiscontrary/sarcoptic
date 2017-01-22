@@ -1,29 +1,29 @@
 package li.earth.urchin.twic.jmhunit;
 
 import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 import org.openjdk.jmh.util.Statistics;
-
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.lessThan;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 public class StatisticsMatchers {
 
+    public static Matcher<? super Statistics> indistinguishableFrom(Statistics statistics) {
+        return Matchers.comparesEqualTo(statistics);
+    }
+
     public static Matcher<? super Statistics> worseThan(Statistics statistics) {
-        return lessThan(statistics);
+        return Matchers.lessThan(statistics);
     }
 
     public static Matcher<? super Statistics> noWorseThan(Statistics statistics) {
-        return greaterThanOrEqualTo(statistics);
+        return Matchers.greaterThanOrEqualTo(statistics);
     }
 
     public static Matcher<? super Statistics> betterThan(Statistics statistics) {
-        return greaterThan(statistics);
+        return Matchers.greaterThan(statistics);
     }
 
     public static Matcher<? super Statistics> noBetterThan(Statistics statistics) {
-        return lessThanOrEqualTo(statistics);
+        return Matchers.lessThanOrEqualTo(statistics);
     }
 
 }
