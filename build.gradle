@@ -9,6 +9,13 @@ dependencies {
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
     testCompile group: 'org.hamcrest', name: 'hamcrest-library', version: '1.3'
+    def jmhVersion = '1.17.4'
+    testCompile group: 'org.openjdk.jmh', name: 'jmh-core', version: jmhVersion
+    testCompile group: 'org.openjdk.jmh', name: 'jmh-generator-annprocess', version: jmhVersion
 
     testRuntime group: 'org.ow2.asm', name: 'asm-util', version: '5.2'
+}
+
+test {
+    exclude '**/generated/**'
 }
