@@ -3,6 +3,7 @@ package li.earth.urchin.twic.sarcoptic;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
 import java.util.function.Supplier;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -59,6 +60,25 @@ public class StructTests {
 
         assertThrows(() -> Struct.of(launder(Struct.class)), ClassCastException.class);
         assertThrows(() -> Struct.of(launder(Runnable.class)), ClassCastException.class);
+    }
+
+    @Test
+    public void canCreateAStructImplementationWithPropertyValues() throws Exception {
+        // this is pretty gross for now!
+        Dog prototype = Struct.of(Dog.class);
+        // note that properties are sorted alphabetically
+        Constructor<? extends Dog> constructor = prototype.getClass().getConstructor(char.class, byte.class, boolean.class, short.class, int.class, String.class, float.class, long.class, double.class);
+        Dog dog = constructor.newInstance('5', (byte) 1, true, (short) 2, 3, "Rover", 6.0f, 4L, 7.0d);
+
+        assertThat(dog.name(), equalTo("Rover"));
+        assertThat(dog.good(), equalTo(true));
+        assertThat(dog.bark(), equalTo((byte) 1));
+        assertThat(dog.leash(), equalTo((short) 2));
+        assertThat(dog.legs(), equalTo(3));
+        assertThat(dog.walk(), equalTo(4L));
+        assertThat(dog.acter(), equalTo('5'));
+        assertThat(dog.speed(), equalTo(6.0f));
+        assertThat(dog.weight(), equalTo(7.0d));
     }
 
     private void assertThrows(Supplier<?> block, Class<? extends Throwable> exceptionType) {

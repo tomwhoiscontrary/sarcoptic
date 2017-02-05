@@ -4,9 +4,12 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -35,9 +38,11 @@ class StructImplementationRegistry extends ClassLoader {
     private <T extends Struct<T>> Class<? extends T> makeImplementation(Class<T> ifaceType) {
         String implClassName = ifaceType.getName() + "Impl";
         Map<String, Class<?>> properties = Arrays.stream(ifaceType.getDeclaredMethods())
-                .collect(Collectors.toMap(Method::getName, Method::getReturnType));
+                .sorted(Comparator.comparing(Method::getName))
+                .collect(Collectors.toMap(Method::getName, Method::getReturnType, this::noMerges, LinkedHashMap::new));
 
         ClassWriter classWriter = makeClass(implClassName, StructImpl.class, ifaceType);
+        makeBindingConstructor(classWriter, implClassName, StructImpl.class, properties);
         makeNullaryConstructor(classWriter, implClassName, StructImpl.class, properties);
         for (Map.Entry<String, Class<?>> property : properties.entrySet()) {
             makeProperty(classWriter, implClassName, property.getKey(), property.getValue());
@@ -45,6 +50,10 @@ class StructImplementationRegistry extends ClassLoader {
 
         byte[] implClassBytes = classWriter.toByteArray();
         return defineClass(implClassName, implClassBytes, 0, implClassBytes.length).asSubclass(ifaceType);
+    }
+
+    private <T> T noMerges(T a, T b) {
+        throw new IllegalStateException();
     }
 
     private ClassWriter makeClass(String implClassName, Class<?> baseType, Class<?> ifaceType) {
@@ -56,6 +65,38 @@ class StructImplementationRegistry extends ClassLoader {
                           ClassFileUtils.binaryName(baseType),
                           new String[]{ClassFileUtils.binaryName(ifaceType)});
         return classWriter;
+    }
+
+    private void makeBindingConstructor(ClassWriter classWriter, String implClassName, Class<StructImpl> baseType, Map<String, Class<?>> properties) {
+        String ctorDescriptor = properties.values().stream()
+                .map(c -> Kind.of(c).descriptor(c))
+                .collect(Collectors.joining("", "(", ")V"));
+
+        MethodVisitor ctor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
+                                                     "<init>",
+                                                     ctorDescriptor,
+                                                     null,
+                                                     null);
+        ctor.visitCode();
+        ctor.visitVarInsn(Opcodes.ALOAD, 0);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, ClassFileUtils.binaryName(baseType), "<init>", "()V", false);
+
+        int index = 1;
+        for (Map.Entry<String, Class<?>> property : properties.entrySet()) {
+            String propName = property.getKey();
+            Class<?> propType = property.getValue();
+            Kind propKind = Kind.of(propType);
+
+            ctor.visitVarInsn(Opcodes.ALOAD, 0);
+            ctor.visitVarInsn(propKind.loadOpcode, index);
+            ctor.visitFieldInsn(Opcodes.PUTFIELD, ClassFileUtils.binaryName(implClassName), propName, propKind.descriptor(propType));
+
+            index += Type.getType(propType).getSize();
+        }
+
+        ctor.visitInsn(Opcodes.RETURN);
+        ctor.visitMaxs(0, 0);
+        ctor.visitEnd();
     }
 
     private void makeNullaryConstructor(ClassWriter classWriter, String implClassName, Class<StructImpl> baseType, Map<String, Class<?>> properties) {
