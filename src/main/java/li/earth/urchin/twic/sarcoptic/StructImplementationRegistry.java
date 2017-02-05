@@ -71,11 +71,11 @@ class StructImplementationRegistry extends ClassLoader {
         for (Map.Entry<String, Class<?>> property : properties.entrySet()) {
             String propName = property.getKey();
             Class<?> propType = property.getValue();
-            Kind propertyKind = Kind.of(propType);
+            Kind propKind = Kind.of(propType);
 
             ctor.visitVarInsn(Opcodes.ALOAD, 0);
-            ctor.visitInsn(propertyKind.zeroOpcode);
-            ctor.visitFieldInsn(Opcodes.PUTFIELD, ClassFileUtils.binaryName(implClassName), propName, propertyKind.descriptor(propType));
+            ctor.visitInsn(propKind.zeroOpcode);
+            ctor.visitFieldInsn(Opcodes.PUTFIELD, ClassFileUtils.binaryName(implClassName), propName, propKind.descriptor(propType));
         }
 
         ctor.visitInsn(Opcodes.RETURN);
@@ -84,32 +84,32 @@ class StructImplementationRegistry extends ClassLoader {
     }
 
     private void makeProperty(ClassWriter classWriter, String implClassName, String propName, Class<?> propType) {
-        Kind propertyKind = Kind.of(propType);
-        String propertyDescriptor = propertyKind.descriptor(propType);
+        Kind propKind = Kind.of(propType);
+        String propDescriptor = propKind.descriptor(propType);
 
-        makePropertyField(classWriter, propName, propertyDescriptor);
-        makePropertyAccessor(classWriter, implClassName, propName, propertyKind, propertyDescriptor);
+        makePropertyField(classWriter, propName, propDescriptor);
+        makePropertyAccessor(classWriter, implClassName, propName, propKind, propDescriptor);
     }
 
-    private void makePropertyField(ClassWriter classWriter, String propName, String propertyDescriptor) {
+    private void makePropertyField(ClassWriter classWriter, String propName, String propDescriptor) {
         FieldVisitor field = classWriter.visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_FINAL,
                                                     propName,
-                                                    propertyDescriptor,
+                                                    propDescriptor,
                                                     null,
                                                     null);
         field.visitEnd();
     }
 
-    private void makePropertyAccessor(ClassWriter classWriter, String implClassName, String propName, Kind propertyKind, String propertyDescriptor) {
+    private void makePropertyAccessor(ClassWriter classWriter, String implClassName, String propName, Kind propKind, String propDescriptor) {
         MethodVisitor accessor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
                                                          propName,
-                                                         "()" + propertyDescriptor,
+                                                         "()" + propDescriptor,
                                                          null,
                                                          null);
         accessor.visitCode();
         accessor.visitVarInsn(Opcodes.ALOAD, 0);
-        accessor.visitFieldInsn(Opcodes.GETFIELD, ClassFileUtils.binaryName(implClassName), propName, propertyDescriptor);
-        accessor.visitInsn(propertyKind.returnOpcode);
+        accessor.visitFieldInsn(Opcodes.GETFIELD, ClassFileUtils.binaryName(implClassName), propName, propDescriptor);
+        accessor.visitInsn(propKind.returnOpcode);
         accessor.visitMaxs(0, 0);
         accessor.visitEnd();
     }
