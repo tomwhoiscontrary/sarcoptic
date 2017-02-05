@@ -6,8 +6,10 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 class StructImplementationRegistry extends ClassLoader {
 
@@ -32,11 +34,13 @@ class StructImplementationRegistry extends ClassLoader {
 
     private <T extends Struct<T>> Class<? extends T> makeImplementation(Class<T> ifaceType) {
         String implClassName = ifaceType.getName() + "Impl";
+        Map<String, Class<?>> properties = Arrays.stream(ifaceType.getDeclaredMethods())
+                .collect(Collectors.toMap(Method::getName, Method::getReturnType));
 
         ClassWriter classWriter = makeClass(implClassName, StructImpl.class, ifaceType);
-        makeNullaryConstructor(classWriter, StructImpl.class);
-        for (Method property : ifaceType.getDeclaredMethods()) {
-            makeProperty(classWriter, implClassName, property.getName(), property.getReturnType());
+        makeNullaryConstructor(classWriter, implClassName, StructImpl.class, properties);
+        for (Map.Entry<String, Class<?>> property : properties.entrySet()) {
+            makeProperty(classWriter, implClassName, property.getKey(), property.getValue());
         }
 
         byte[] implClassBytes = classWriter.toByteArray();
@@ -54,7 +58,7 @@ class StructImplementationRegistry extends ClassLoader {
         return classWriter;
     }
 
-    private void makeNullaryConstructor(ClassWriter classWriter, Class<StructImpl> baseType) {
+    private void makeNullaryConstructor(ClassWriter classWriter, String implClassName, Class<StructImpl> baseType, Map<String, Class<?>> properties) {
         MethodVisitor ctor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
                                                      "<init>",
                                                      "()V",
@@ -63,6 +67,17 @@ class StructImplementationRegistry extends ClassLoader {
         ctor.visitCode();
         ctor.visitVarInsn(Opcodes.ALOAD, 0);
         ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, ClassFileUtils.binaryName(baseType), "<init>", "()V", false);
+
+        for (Map.Entry<String, Class<?>> property : properties.entrySet()) {
+            String propName = property.getKey();
+            Class<?> propType = property.getValue();
+            Kind propertyKind = Kind.of(propType);
+
+            ctor.visitVarInsn(Opcodes.ALOAD, 0);
+            ctor.visitInsn(propertyKind.zeroOpcode);
+            ctor.visitFieldInsn(Opcodes.PUTFIELD, ClassFileUtils.binaryName(implClassName), propName, propertyKind.descriptor(propType));
+        }
+
         ctor.visitInsn(Opcodes.RETURN);
         ctor.visitMaxs(0, 0);
         ctor.visitEnd();
