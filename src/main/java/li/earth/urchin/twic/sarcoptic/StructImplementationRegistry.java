@@ -8,6 +8,7 @@ import org.objectweb.asm.Type;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -68,13 +69,9 @@ class StructImplementationRegistry extends ClassLoader {
     }
 
     private void makeBindingConstructor(ClassWriter classWriter, String implClassName, Class<StructImpl> baseType, Map<String, Class<?>> properties) {
-        String ctorDescriptor = properties.values().stream()
-                .map(c -> Kind.of(c).descriptor(c))
-                .collect(Collectors.joining("", "(", ")V"));
-
         MethodVisitor ctor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
                                                      "<init>",
-                                                     ctorDescriptor,
+                                                     constructorDescriptor(properties.values()),
                                                      null,
                                                      null);
         ctor.visitCode();
@@ -107,21 +104,24 @@ class StructImplementationRegistry extends ClassLoader {
                                                      null);
         ctor.visitCode();
         ctor.visitVarInsn(Opcodes.ALOAD, 0);
-        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, ClassFileUtils.binaryName(baseType), "<init>", "()V", false);
 
         for (Map.Entry<String, Class<?>> property : properties.entrySet()) {
-            String propName = property.getKey();
             Class<?> propType = property.getValue();
             Kind propKind = Kind.of(propType);
 
-            ctor.visitVarInsn(Opcodes.ALOAD, 0);
             ctor.visitInsn(propKind.zeroOpcode);
-            ctor.visitFieldInsn(Opcodes.PUTFIELD, ClassFileUtils.binaryName(implClassName), propName, propKind.descriptor(propType));
         }
 
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, ClassFileUtils.binaryName(implClassName), "<init>", constructorDescriptor(properties.values()), false);
         ctor.visitInsn(Opcodes.RETURN);
         ctor.visitMaxs(0, 0);
         ctor.visitEnd();
+    }
+
+    private String constructorDescriptor(Collection<Class<?>> parameterTypes) {
+        return parameterTypes.stream()
+                .map(c -> Kind.of(c).descriptor(c))
+                .collect(Collectors.joining("", "(", ")V"));
     }
 
     private void makeProperty(ClassWriter classWriter, String implClassName, String propName, Class<?> propType) {

@@ -20,10 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static li.earth.urchin.twic.jmhunit.ScaledStatistics.scale;
 import static li.earth.urchin.twic.jmhunit.StatisticsMatchers.betterThan;
 import static li.earth.urchin.twic.jmhunit.StatisticsMatchers.indistinguishableFrom;
-import static li.earth.urchin.twic.jmhunit.StatisticsMatchers.noWorseThan;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 @Fork(1)
@@ -45,8 +43,8 @@ public class PerformanceTests {
         // check that HotSpot still works
         assertThat(interfaceResult.getStatistics(), indistinguishableFrom(beanResult.getStatistics()));
 
-        assertThat(structResult.getStatistics(), noWorseThan(scale(1.5, beanResult.getStatistics())));
-        assertThat(structResult.getStatistics(), noWorseThan(scale(1.5, interfaceResult.getStatistics())));
+        assertThat(structResult.getStatistics(), indistinguishableFrom(beanResult.getStatistics()));
+        assertThat(structResult.getStatistics(), indistinguishableFrom(interfaceResult.getStatistics()));
     }
 
     @Test
