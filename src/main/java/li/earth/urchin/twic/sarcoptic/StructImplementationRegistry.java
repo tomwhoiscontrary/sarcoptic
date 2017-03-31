@@ -46,7 +46,7 @@ class StructImplementationRegistry extends ClassLoader {
         makeBindingConstructor(classWriter, implClassName, StructImpl.class, properties);
         makeNullaryConstructor(classWriter, implClassName, StructImpl.class, properties);
         for (Map.Entry<String, Class<?>> property : properties.entrySet()) {
-            makeProperty(classWriter, implClassName, property.getKey(), property.getValue());
+            makeProperty(classWriter, implClassName, property.getKey(), property.getValue(), properties);
         }
 
         byte[] implClassBytes = classWriter.toByteArray();
@@ -124,12 +124,13 @@ class StructImplementationRegistry extends ClassLoader {
                 .collect(Collectors.joining("", "(", ")V"));
     }
 
-    private void makeProperty(ClassWriter classWriter, String implClassName, String propName, Class<?> propType) {
+    private void makeProperty(ClassWriter classWriter, String implClassName, String propName, Class<?> propType, Map<String, Class<?>> properties) {
         Kind propKind = Kind.of(propType);
         String propDescriptor = propKind.descriptor(propType);
 
         makePropertyField(classWriter, propName, propDescriptor);
         makePropertyAccessor(classWriter, implClassName, propName, propKind, propDescriptor);
+        makePropertySetter(implClassName, classWriter, propName, propKind, propDescriptor, properties);
     }
 
     private void makePropertyField(ClassWriter classWriter, String propName, String propDescriptor) {
@@ -153,6 +154,33 @@ class StructImplementationRegistry extends ClassLoader {
         accessor.visitInsn(propKind.returnOpcode);
         accessor.visitMaxs(0, 0);
         accessor.visitEnd();
+    }
+
+    private void makePropertySetter(String implClassName, ClassWriter classWriter, String propName, Kind propKind, String propDescriptor, Map<String, Class<?>> properties) {
+        MethodVisitor setter = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
+                                                       "with" + capitalise(propName),
+                                                       "(" + propDescriptor + ")L" + ClassFileUtils.binaryName(implClassName) + ";",
+                                                       null,
+                                                       null);
+        setter.visitCode();
+        setter.visitTypeInsn(Opcodes.NEW, ClassFileUtils.binaryName(implClassName));
+        setter.visitInsn(Opcodes.DUP);
+        properties.forEach((n, c) -> {
+            if (n.equals(propName)) {
+                setter.visitVarInsn(propKind.loadOpcode, 1);
+            } else {
+                setter.visitVarInsn(Opcodes.ALOAD, 0);
+                setter.visitFieldInsn(Opcodes.GETFIELD, ClassFileUtils.binaryName(implClassName), n, Kind.of(c).descriptor(c));
+            }
+        });
+        setter.visitMethodInsn(Opcodes.INVOKESPECIAL, ClassFileUtils.binaryName(implClassName), "<init>", constructorDescriptor(properties.values()), false);
+        setter.visitInsn(Opcodes.ARETURN);
+        setter.visitMaxs(0, 0);
+        setter.visitEnd();
+    }
+
+    private String capitalise(String s) {
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
     }
 
     private String signature(Class<?> baseType, Class<?> ifaceType) {
