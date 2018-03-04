@@ -24,18 +24,21 @@ public class JMHRule implements TestRule {
         return new Statement() {
             @Override
             public void evaluate() throws Throwable {
-                Options options = new OptionsBuilder()
-                        .include(description.getClassName() + ".*")
-                        .shouldFailOnError(true)
-                        // work around inheritance of Gradle's security manager:
-                        .jvmArgsAppend("-Djava.security.manager=", "-Djava.security.policy=" + getClass().getResource("permissive.policy"))
-                        .build();
+                Options options = new OptionsBuilder().include(description.getClassName() + ".*")
+                                                      .shouldFailOnError(true)
+                                                      .jvmArgsAppend(workaroundGradleSecurityManagerInheritance())
+                                                      .build();
 
                 results = new Runner(options).run().stream().collect(toMapByBenchmarkName());
 
                 base.evaluate();
             }
         };
+    }
+
+    private String[] workaroundGradleSecurityManagerInheritance() {
+        return new String[]{"-Djava.security.manager=",
+                            "-Djava.security.policy=" + getClass().getResource("permissive.policy")};
     }
 
     private Collector<RunResult, ?, Map<String, RunResult>> toMapByBenchmarkName() {

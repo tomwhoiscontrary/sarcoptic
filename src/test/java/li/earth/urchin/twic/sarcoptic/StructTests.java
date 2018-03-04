@@ -68,7 +68,16 @@ public class StructTests {
         // this is pretty gross for now!
         Dog prototype = Struct.of(Dog.class);
         // note that properties are sorted alphabetically
-        Constructor<? extends Dog> constructor = prototype.getClass().getConstructor(char.class, byte.class, boolean.class, short.class, int.class, String.class, float.class, long.class, double.class);
+        Constructor<? extends Dog> constructor = prototype.getClass()
+                                                          .getConstructor(char.class,
+                                                                          byte.class,
+                                                                          boolean.class,
+                                                                          short.class,
+                                                                          int.class,
+                                                                          String.class,
+                                                                          float.class,
+                                                                          long.class,
+                                                                          double.class);
         Dog dog = constructor.newInstance('5', (byte) 1, true, (short) 2, 3, "Rover", 6.0f, 4L, 7.0d);
 
         assertThat(dog.name(), equalTo("Rover"));
@@ -88,7 +97,15 @@ public class StructTests {
         Dog prototype = Struct.of(Dog.class);
         Class<? extends Dog> implClass = prototype.getClass();
         // note that properties are sorted alphabetically
-        Constructor<? extends Dog> constructor = implClass.getConstructor(char.class, byte.class, boolean.class, short.class, int.class, String.class, float.class, long.class, double.class);
+        Constructor<? extends Dog> constructor = implClass.getConstructor(char.class,
+                                                                          byte.class,
+                                                                          boolean.class,
+                                                                          short.class,
+                                                                          int.class,
+                                                                          String.class,
+                                                                          float.class,
+                                                                          long.class,
+                                                                          double.class);
         Dog template = constructor.newInstance('5', (byte) 1, true, (short) 2, 3, "Rover", 6.0f, 4L, 7.0d);
 
         // again, pretty gross for now!

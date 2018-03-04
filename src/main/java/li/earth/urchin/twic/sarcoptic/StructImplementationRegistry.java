@@ -39,8 +39,11 @@ class StructImplementationRegistry extends ClassLoader {
     private <T extends Struct<T>> Class<? extends T> makeImplementation(Class<T> ifaceType) {
         String implClassName = ifaceType.getName() + "Impl";
         Map<String, Class<?>> properties = Arrays.stream(ifaceType.getDeclaredMethods())
-                .sorted(Comparator.comparing(Method::getName))
-                .collect(Collectors.toMap(Method::getName, Method::getReturnType, this::noMerges, LinkedHashMap::new));
+                                                 .sorted(Comparator.comparing(Method::getName))
+                                                 .collect(Collectors.toMap(Method::getName,
+                                                                           Method::getReturnType,
+                                                                           this::noMerges,
+                                                                           LinkedHashMap::new));
 
         ClassWriter classWriter = makeClass(implClassName, StructImpl.class, ifaceType);
         makeBindingConstructor(classWriter, implClassName, StructImpl.class, properties);
@@ -68,7 +71,10 @@ class StructImplementationRegistry extends ClassLoader {
         return classWriter;
     }
 
-    private void makeBindingConstructor(ClassWriter classWriter, String implClassName, Class<StructImpl> baseType, Map<String, Class<?>> properties) {
+    private void makeBindingConstructor(ClassWriter classWriter,
+                                        String implClassName,
+                                        Class<StructImpl> baseType,
+                                        Map<String, Class<?>> properties) {
         MethodVisitor ctor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
                                                      "<init>",
                                                      constructorDescriptor(properties.values()),
@@ -86,7 +92,10 @@ class StructImplementationRegistry extends ClassLoader {
 
             ctor.visitVarInsn(Opcodes.ALOAD, 0);
             ctor.visitVarInsn(propKind.loadOpcode, index);
-            ctor.visitFieldInsn(Opcodes.PUTFIELD, ClassFileUtils.binaryName(implClassName), propName, propKind.descriptor(propType));
+            ctor.visitFieldInsn(Opcodes.PUTFIELD,
+                                ClassFileUtils.binaryName(implClassName),
+                                propName,
+                                propKind.descriptor(propType));
 
             index += Type.getType(propType).getSize();
         }
@@ -96,12 +105,11 @@ class StructImplementationRegistry extends ClassLoader {
         ctor.visitEnd();
     }
 
-    private void makeNullaryConstructor(ClassWriter classWriter, String implClassName, Class<StructImpl> baseType, Map<String, Class<?>> properties) {
-        MethodVisitor ctor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
-                                                     "<init>",
-                                                     "()V",
-                                                     null,
-                                                     null);
+    private void makeNullaryConstructor(ClassWriter classWriter,
+                                        String implClassName,
+                                        Class<StructImpl> baseType,
+                                        Map<String, Class<?>> properties) {
+        MethodVisitor ctor = classWriter.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
         ctor.visitCode();
         ctor.visitVarInsn(Opcodes.ALOAD, 0);
 
@@ -112,7 +120,11 @@ class StructImplementationRegistry extends ClassLoader {
             ctor.visitInsn(propKind.zeroOpcode);
         }
 
-        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, ClassFileUtils.binaryName(implClassName), "<init>", constructorDescriptor(properties.values()), false);
+        ctor.visitMethodInsn(Opcodes.INVOKESPECIAL,
+                             ClassFileUtils.binaryName(implClassName),
+                             "<init>",
+                             constructorDescriptor(properties.values()),
+                             false);
         ctor.visitInsn(Opcodes.RETURN);
         ctor.visitMaxs(0, 0);
         ctor.visitEnd();
@@ -120,11 +132,15 @@ class StructImplementationRegistry extends ClassLoader {
 
     private String constructorDescriptor(Collection<Class<?>> parameterTypes) {
         return parameterTypes.stream()
-                .map(c -> Kind.of(c).descriptor(c))
-                .collect(Collectors.joining("", "(", ")V"));
+                             .map(c -> Kind.of(c).descriptor(c))
+                             .collect(Collectors.joining("", "(", ")V"));
     }
 
-    private void makeProperty(ClassWriter classWriter, String implClassName, String propName, Class<?> propType, Map<String, Class<?>> properties) {
+    private void makeProperty(ClassWriter classWriter,
+                              String implClassName,
+                              String propName,
+                              Class<?> propType,
+                              Map<String, Class<?>> properties) {
         Kind propKind = Kind.of(propType);
         String propDescriptor = propKind.descriptor(propType);
 
@@ -142,7 +158,11 @@ class StructImplementationRegistry extends ClassLoader {
         field.visitEnd();
     }
 
-    private void makePropertyAccessor(ClassWriter classWriter, String implClassName, String propName, Kind propKind, String propDescriptor) {
+    private void makePropertyAccessor(ClassWriter classWriter,
+                                      String implClassName,
+                                      String propName,
+                                      Kind propKind,
+                                      String propDescriptor) {
         MethodVisitor accessor = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
                                                          propName,
                                                          "()" + propDescriptor,
@@ -156,10 +176,16 @@ class StructImplementationRegistry extends ClassLoader {
         accessor.visitEnd();
     }
 
-    private void makePropertySetter(String implClassName, ClassWriter classWriter, String propName, Kind propKind, String propDescriptor, Map<String, Class<?>> properties) {
+    private void makePropertySetter(String implClassName,
+                                    ClassWriter classWriter,
+                                    String propName,
+                                    Kind propKind,
+                                    String propDescriptor,
+                                    Map<String, Class<?>> properties) {
+        String desc = "(" + propDescriptor + ")L" + ClassFileUtils.binaryName(implClassName) + ";";
         MethodVisitor setter = classWriter.visitMethod(Opcodes.ACC_PUBLIC,
                                                        "with" + capitalise(propName),
-                                                       "(" + propDescriptor + ")L" + ClassFileUtils.binaryName(implClassName) + ";",
+                                                       desc,
                                                        null,
                                                        null);
         setter.visitCode();
@@ -170,10 +196,17 @@ class StructImplementationRegistry extends ClassLoader {
                 setter.visitVarInsn(propKind.loadOpcode, 1);
             } else {
                 setter.visitVarInsn(Opcodes.ALOAD, 0);
-                setter.visitFieldInsn(Opcodes.GETFIELD, ClassFileUtils.binaryName(implClassName), n, Kind.of(c).descriptor(c));
+                setter.visitFieldInsn(Opcodes.GETFIELD,
+                                      ClassFileUtils.binaryName(implClassName),
+                                      n,
+                                      Kind.of(c).descriptor(c));
             }
         });
-        setter.visitMethodInsn(Opcodes.INVOKESPECIAL, ClassFileUtils.binaryName(implClassName), "<init>", constructorDescriptor(properties.values()), false);
+        setter.visitMethodInsn(Opcodes.INVOKESPECIAL,
+                               ClassFileUtils.binaryName(implClassName),
+                               "<init>",
+                               constructorDescriptor(properties.values()),
+                               false);
         setter.visitInsn(Opcodes.ARETURN);
         setter.visitMaxs(0, 0);
         setter.visitEnd();
